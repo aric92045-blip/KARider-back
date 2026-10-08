@@ -1,0 +1,115 @@
+# Despliegue a Azure App Service "KARider-back" (Linux, .NET 9) con OIDC (sin contraseñas en GitHub).
+# Reemplaza al workflow generado por el portal (main_karider-back.yml), que compilaba la ruta
+# antigua KARider.API/ y deja de funcionar con la estructura src/. Reutiliza los mismos secrets.
+#   Secrets (creados por el portal de Azure): AZUREAPPSERVICE_CLIENTID_…, _TENANTID_…, _SUBSCRIPTIONID_…
+#   Opcionales: secret DATABASE_CONNECTION_STRING y variable MIGRAR_EN_CI="true" para migrar desde CI.
+#   Variable opcional AZURE_WEBAPP_NAME (por defecto KARider-back). Ver docs/despliegue-azure.md
+name: Deploy Azure
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build:
+    name: Compilar, probar y empaquetar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restaurar y compilar
+        run: |
+          dotnet restore KARider.sln
+          dotnet build KARider.sln -c Release --no-restore
+
+      - name: Pruebas
+        run: dotnet test KARider.sln -c Release --no-build
+
+      - name: Publicar API
+        run: dotnet publish src/KARider.API/KARider.API.csproj -c Release -o ./publish --no-build
+
+      - name: Generar bundle de migraciones
+        run: |
+          dotnet tool install --global dotnet-ef --version 9.0.*
+          dotnet ef migrations bundle -p src/KARider.Infrastructure -s src/KARider.API \
+            --configuration Release --self-contained -r linux-x64 -o ./efbundle --force
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: api
+          path: ./publish
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: efbundle
+          path: ./efbundle
+          retention-days: 7
+
+  deploy:
+    name: Desplegar a producción
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: api
+          path: ./publish
+
+      - name: Aplicar migraciones a PostgreSQL
+        if: vars.MIGRAR_EN_CI == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: efbundle
+          path: ./bundle
+
+      - name: Ejecutar bundle de migraciones
+        if: vars.MIGRAR_EN_CI == 'true'
+        env:
+          DB: ${{ secrets.DATABASE_CONNECTION_STRING }}
+        run: |
+          chmod +x ./bundle/efbundle
+          ./bundle/efbundle --connection "$DB"
+
+      - name: Iniciar sesión en Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_DB5D6F777D9D42ED938E3371ED3C55E0 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_AC7CF7358391438083C182F68AB6D94C }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_8297A037009F449D93A32E2F805F51C6 }}
+
+      - name: Desplegar en App Service
+        id: deploy
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME || 'KARider-back' }}
+          slot-name: Production
+          package: ./publish
+
+      - name: Prueba de humo (/health/ready)
+        env:
+          URL: ${{ steps.deploy.outputs.webapp-url }}
+        run: |
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$URL/health/ready" || true)
+            if [ "$code" = "200" ]; then echo "API saludable"; exit 0; fi
+            echo "Intento $i: HTTP $code"; sleep 15
+          done
+          echo "::error::La API no respondió saludable tras el despliegue"; exit 1

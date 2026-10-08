@@ -1,0 +1,70 @@
+### KARider API · pruebas manuales (extensión REST Client / Visual Studio)
+@host = http://localhost:5014
+@correo = carlos.mendoza@uttt.edu.mx
+@password = Karider#2026
+# Copia aquí el accessToken que devuelve /auth/login
+@token = PEGAR_ACCESS_TOKEN
+
+### Salud (liveness y readiness con PostgreSQL)
+GET {{host}}/health/ready
+
+### Catálogos
+GET {{host}}/api/v1/catalogos/carreras
+
+###
+GET {{host}}/api/v1/catalogos/puntos-encuentro
+
+### Registro de conductor (P4)
+POST {{host}}/api/v1/auth/registro
+Content-Type: application/json
+
+{
+  "rol": "Conductor",
+  "nombreCompleto": "Carlos Mendoza Cruz",
+  "matricula": "22300630",
+  "telefono": "7731234567",
+  "carreraId": 1,
+  "cuatrimestre": 7,
+  "correoInstitucional": "{{correo}}",
+  "password": "{{password}}",
+  "confirmarPassword": "{{password}}",
+  "vehiculo": { "modelo": "Nissan Versa Sense", "color": "Azul acero", "anio": 2022, "placas": "HNX-421-C", "capacidad": 4 }
+}
+
+### Verificar correo (en Development el código aparece en la consola de la API)
+POST {{host}}/api/v1/auth/verificar-correo
+Content-Type: application/json
+
+{ "correoInstitucional": "{{correo}}", "codigo": "123456" }
+
+### Login (P2)
+POST {{host}}/api/v1/auth/login
+Content-Type: application/json
+
+{ "correoInstitucional": "{{correo}}", "password": "{{password}}", "rol": "Conductor", "recordarme": true }
+
+### Publicar viaje (P9/P10): $160 entre 3 asientos + conductor = $40 por asiento
+POST {{host}}/api/v1/viajes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "puntoEncuentroId": 1,
+  "destino": "Pachuca de Soto (Plaza Galerías)",
+  "fechaSalida": "2026-12-01T14:30:00-06:00",
+  "asientos": 3,
+  "gastoTotal": 160,
+  "notas": "Saldré puntual al terminar clase en Edificio B.",
+  "paradas": ["Actopan Centro", "San Agustín Tlaxiaca"],
+  "publicar": true
+}
+
+### Buscar viajes (P5)
+GET {{host}}/api/v1/viajes?destino=pachuca&orden=MenorAporte&pagina=1&tamanoPagina=10
+Authorization: Bearer {{token}}
+
+### Ejemplo de error estandarizado (validación)
+POST {{host}}/api/v1/auth/login
+Content-Type: application/json
+
+{ "correoInstitucional": "alguien@gmail.com", "password": "" }
