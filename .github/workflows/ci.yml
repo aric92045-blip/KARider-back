@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-test:
+    name: Compilar y probar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restaurar
+        run: dotnet restore KARider.sln
+
+      - name: Compilar (Release)
+        run: dotnet build KARider.sln -c Release --no-restore
+
+      - name: Pruebas unitarias
+        run: dotnet test KARider.sln -c Release --no-build --logger "trx;LogFileName=resultados.trx" --collect:"XPlat Code Coverage"
+
+      - name: Verificar que el modelo no tenga cambios sin migración
+        run: |
+          dotnet tool install --global dotnet-ef --version 9.0.*
+          dotnet ef migrations has-pending-model-changes -p src/KARider.Infrastructure -s src/KARider.API --no-build --configuration Release
+
+      - name: Paquetes con vulnerabilidades conocidas
+        run: |
+          dotnet list KARider.sln package --vulnerable --include-transitive | tee vulnerables.txt
+          if grep -q "has the following vulnerable packages" vulnerables.txt; then
+            echo "::error::Se detectaron paquetes NuGet vulnerables"; exit 1
+          fi
+
+      - name: Publicar resultados de pruebas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-pruebas
+          path: tests/**/TestResults/
+          retention-days: 7
