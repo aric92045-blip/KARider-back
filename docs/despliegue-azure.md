@@ -30,17 +30,19 @@ az postgres flexible-server db create -g $RG -s karider-db -d karider
 
 En **Configuración → Variables de entorno** (o con `az webapp config appsettings set`). Nunca van en `appsettings.json`.
 
-| Variable | Ejemplo / nota |
-|---|---|
-| `ConnectionStrings__DefaultConnection` | `Host=karider-db.postgres.database.azure.com;Port=5432;Database=karider;Username=karideradmin;Password=...;SSL Mode=Require;Maximum Pool Size=100;Timeout=15` |
-| `Jwt__SigningKey` | Valor aleatorio de 32 caracteres o más (`scripts/generar-secretos.ps1`) |
-| `Hashing__Pepper` | Otro valor aleatorio de 32 caracteres o más, distinto del anterior |
-| `Cors__AllowedOrigins__0` | URL del frontend PWA, ej. `https://karider.azurestaticapps.net` |
-| `AllowedHosts` | El dominio predeterminado del App Service (Información general → Dominio predeterminado) |
-| `ASPNETCORE_ENVIRONMENT` | `Production` |
+> ⚠️ **Sin las tres variables obligatorias la API no arranca**, y Azure responde **HTTP 503** (la prueba de humo del workflow falla con «La API no respondió saludable»). El motivo exacto aparece en **Supervisión → Secuencia de registro**, por ejemplo: `No se encontró la cadena de conexión a PostgreSQL`.
+
+| Variable | Obligatoria | Ejemplo / nota |
+|---|---|---|
+| `ConnectionStrings__DefaultConnection` | **Sí** | `Host=<servidor>;Port=5432;Database=karider;Username=<usuario>;Password=<contraseña>;SSL Mode=Require;Maximum Pool Size=100;Timeout=15` |
+| `Jwt__SigningKey` | **Sí** | Valor aleatorio de 32 caracteres o más (`scripts/generar-secretos.ps1`) |
+| `Hashing__Pepper` | **Sí** | Otro valor aleatorio de 32 caracteres o más, distinto del anterior |
+| `Database__AplicarMigracionesAlIniciar` | Recomendada | `true` en el primer despliegue para crear las tablas (con una sola instancia) |
+| `Cors__AllowedOrigins__0` | Para el frontend | URL del frontend PWA, ej. `https://karider.azurestaticapps.net` |
+| `AllowedHosts` | No | Por defecto `*`. Para restringir, usa el dominio predeterminado exacto (Información general → Dominio predeterminado) |
+| `ASPNETCORE_ENVIRONMENT` | No | `Production` (valor por defecto en Azure) |
 | `Smtp__Host`, `Smtp__Port`, `Smtp__Usuario`, `Smtp__Password`, `Smtp__Remitente` | Servidor de correo para los códigos |
 | `WebPush__PublicKey`, `WebPush__PrivateKey`, `WebPush__Subject` | Claves VAPID (`npx web-push generate-vapid-keys`) |
-| `Database__AplicarMigracionesAlIniciar` | `true` solo si no se migra desde CI y hay una sola instancia |
 | `APPLICATIONINSIGHTS_CONNECTION_STRING` | Opcional, activa la telemetría |
 
 **Recomendado:** guardar los secretos en Azure Key Vault y referenciarlos con `@Microsoft.KeyVault(SecretUri=https://<vault>.vault.azure.net/secrets/JwtSigningKey/)`, habilitando la identidad administrada del App Service.
