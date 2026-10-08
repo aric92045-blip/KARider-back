@@ -71,6 +71,17 @@ Todas están documentadas en [.env.example](.env.example). Las obligatorias son:
 
 Si falta alguna, la API no arranca y muestra un mensaje que indica qué variable configurar. Ningún secreto vive en `appsettings*.json` ni en el repositorio.
 
+## Base de datos (Neon · PostgreSQL 15)
+
+El esquema se versiona con migraciones de EF Core, una por sprint, y cada una tiene su script SQL en [database/](database/):
+
+| Script | Contenido |
+|---|---|
+| [sprint1_hu01-hu05.sql](database/sprint1_hu01-hu05.sql) | HU-01 a HU-05: carreras, usuarios, códigos de verificación, sesiones, vehículos, puntos de encuentro, viajes y paradas |
+| [sprint2_reservas_calificaciones.sql](database/sprint2_reservas_calificaciones.sql) | Reservas, calificaciones, notificaciones y suscripciones push |
+
+Para crear la base en Neon, ejecuta `sprint1_hu01-hu05.sql` en el SQL Editor. La API aplica sola las migraciones siguientes si arranca con `Database__AplicarMigracionesAlIniciar=true`. Los scripts no se editan a mano: se cambia el modelo, se crea una migración y se regenera el script con `dotnet ef migrations script`.
+
 ## Convenciones
 
 - **Ramas:** `main` (producción, se despliega automáticamente), `develop` (integración), `feature/*`, `fix/*`. Todo entra mediante un PR con CI en verde.
