@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/*.user
+.git/
+.github/
+tests/
+docs/
+.env
+.env.*
+!.env.example
+docker-compose*.yml
+Dockerfile
+README.md
