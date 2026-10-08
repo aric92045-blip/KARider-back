@@ -101,6 +101,7 @@ jobs:
         with:
           app-name: ${{ vars.AZURE_WEBAPP_NAME || 'KARider-back' }}
           slot-name: Production
+          startup-command: dotnet KARider.API.dll
           package: ./publish
 
       - name: Prueba de humo (/health/ready)
