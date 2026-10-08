@@ -1,0 +1,40 @@
+# Entorno LOCAL de desarrollo. En producción la base de datos es externa (PostgreSQL 15 administrado).
+# Uso: cp .env.example .env  →  docker compose up -d db  →  dotnet run --project src/KARider.API
+#      o todo en contenedores: docker compose up --build
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: karider-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-karider}
+      POSTGRES_USER: ${POSTGRES_USER:-karider}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"   # 5433 en el host para no chocar con un PostgreSQL instalado localmente
+    volumes:
+      - karider-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-karider} -d ${POSTGRES_DB:-karider}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: karider-api
+    profiles: ["full"]
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB:-karider};Username=${POSTGRES_USER:-karider};Password=${POSTGRES_PASSWORD}
+    ports:
+      - "8080:8080"
+
+volumes:
+  karider-pgdata:

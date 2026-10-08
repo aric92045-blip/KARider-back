@@ -1,2 +1,88 @@
 # KARider-back
-Aplicación web progresiva para coordinar viajes compartidos entre miembros de la misma universidad.
+
+API de **KARider**, una aplicación web progresiva para coordinar viajes compartidos entre miembros verificados de la Universidad Tecnológica de Tula-Tepeji (UTTT). Permite fijar puntos de encuentro, dividir el gasto de combustible y calificarse mutuamente.
+
+**Stack:** .NET 9 · ASP.NET Core · EF Core 9 · PostgreSQL 15 · JWT · FluentValidation · Azure App Service · GitHub Actions
+
+## Estructura
+
+```
+KARider-back/
+├── KARider.sln
+├── global.json · Directory.Build.props · .editorconfig
+├── .env.example                  ← plantilla de variables de entorno (sin secretos)
+├── docker-compose.yml            ← PostgreSQL 15 local (y la API con --profile full)
+├── Dockerfile
+├── .github/workflows/
+│   ├── ci.yml                    ← compilación, pruebas, migraciones y vulnerabilidades
+│   └── deploy-azure.yml          ← despliegue a Azure App Service con OIDC
+├── docs/
+│   ├── arquitectura.md           ← capas, mapeo pantallas → endpoints, modelo de datos, escalamiento y seguridad
+│   ├── errores.md                ← formato y catálogo de códigos de error
+│   └── despliegue-azure.md       ← guía paso a paso
+├── scripts/generar-secretos.ps1
+├── src/
+│   ├── KARider.Domain/           ← entidades, reglas de negocio y errores (sin dependencias)
+│   │   ├── Common/  (Entity, Result, Error)
+│   │   ├── Entities/ (Usuario, Vehiculo, Viaje, Reserva, Calificacion, …)
+│   │   ├── Enums/
+│   │   └── Errors/DomainErrors.cs
+│   ├── KARider.Application/      ← casos de uso por módulo del MVP
+│   │   ├── Abstractions/ (puertos: DbContext, hashing, tokens, correo, push)
+│   │   ├── Common/ (opciones, paginación, reglas de validación)
+│   │   └── Features/ Auth · Viajes · Reservas · Calificaciones · Perfil · Vehiculos · Notificaciones · Catalogos
+│   ├── KARider.Infrastructure/   ← EF Core + Npgsql, migraciones, JWT, PBKDF2, SMTP, Web Push
+│   └── KARider.API/              ← controladores, errores estandarizados, seguridad HTTP
+└── tests/KARider.UnitTests/      ← pruebas de dominio, validadores y autenticación
+```
+
+## Puesta en marcha local
+
+Requisitos: .NET SDK 9 y Docker (o un PostgreSQL 15 propio).
+
+```bash
+cp .env.example .env                       # completa las contraseñas
+pwsh ./scripts/generar-secretos.ps1        # pega Jwt__SigningKey y Hashing__Pepper en .env
+docker compose up -d db                    # PostgreSQL 15 en localhost:5433
+dotnet run --project src/KARider.API       # aplica migraciones y abre /swagger
+```
+
+- Documentación interactiva: http://localhost:5014/swagger (solo en Development).
+- Salud: `/health/live` (proceso) y `/health/ready` (PostgreSQL).
+- Sin SMTP configurado, el código de verificación se imprime en la consola de la API (solo en Development).
+- Para no usar `.env`, ejecuta `pwsh ./scripts/generar-secretos.ps1 -UserSecrets` y `dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<cadena>" --project src/KARider.API`.
+- Hay peticiones de ejemplo en [src/KARider.API/KARider.API.http](src/KARider.API/KARider.API.http).
+
+```bash
+dotnet test                                           # pruebas unitarias
+dotnet ef migrations add <Nombre> -p src/KARider.Infrastructure -s src/KARider.API -o Persistence/Migrations
+```
+
+## Variables de entorno
+
+Todas están documentadas en [.env.example](.env.example). Las obligatorias son:
+
+| Variable | Descripción |
+|---|---|
+| `ConnectionStrings__DefaultConnection` | Cadena de conexión a PostgreSQL 15 (`SSL Mode=Require` en producción) |
+| `Jwt__SigningKey` | Clave de firma de los JWT (32 caracteres o más) |
+| `Hashing__Pepper` | Clave HMAC para códigos y refresh tokens (32 caracteres o más) |
+| `Cors__AllowedOrigins__0` | Origen del frontend PWA |
+
+Si falta alguna, la API no arranca y muestra un mensaje que indica qué variable configurar. Ningún secreto vive en `appsettings*.json` ni en el repositorio.
+
+## Convenciones
+
+- **Ramas:** `main` (producción, se despliega automáticamente), `develop` (integración), `feature/*`, `fix/*`. Todo entra mediante un PR con CI en verde.
+- **Commits:** [Conventional Commits](https://www.conventionalcommits.org/es/) (`feat:`, `fix:`, `chore:`, `docs:`…).
+- **API:** versionada en `/api/v1`, JSON en camelCase y enums como texto (`"Conductor"`, `"Programado"`).
+- **Errores:** siempre en formato Problem Details con un `code` estable; ver [docs/errores.md](docs/errores.md).
+- **Nuevas reglas de negocio:** van en Domain y devuelven `Result`. Cada error nuevo se agrega a `DomainErrors` y a `docs/errores.md`.
+
+## Despliegue
+
+Ver [docs/despliegue-azure.md](docs/despliegue-azure.md). Resumen: App Service Linux (.NET 9) más PostgreSQL 15 externo, despliegue con GitHub Actions y OIDC, y verificación automática de `/health/ready`.
+
+## Equipo
+
+Kazumi Barrera Avila · Arleth Cruz Hernández · Rocío Daniela García Jiménez. Grupo 10-IDGS-G3, UTTT. Docente: Juan Carlos Benítez Reyes.

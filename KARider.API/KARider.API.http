@@ -1,6 +1,0 @@
-@KARider.API_HostAddress = http://localhost:5014
-
-GET {{KARider.API_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
