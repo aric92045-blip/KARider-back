@@ -4,9 +4,9 @@ using KARider.Domain.Errors;
 
 namespace KARider.Domain.Entities;
 
-/// <summary>
+
 /// Viaje publicado por un conductor desde un punto de encuentro del campus hacia un destino.
-/// </summary>
+
 public sealed class Viaje : Entity
 {
     private readonly List<ParadaViaje> _paradas = [];
