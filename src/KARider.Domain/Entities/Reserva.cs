@@ -6,7 +6,8 @@ using KARider.Domain.Errors;
 namespace KARider.Domain.Entities;
 
 
-/// Solicitud de asientos de un pasajero en un viaje. Flujo: Pendiente → Confirmada/Rechazada → Completada.
+/// Reserva de asientos de un pasajero en un viaje. Se confirma automáticamente al crearse (HU-07).
+/// Flujo: Confirmada → Completada, o Confirmada → Cancelada.
 
 public sealed class Reserva : Entity
 {
@@ -68,7 +69,9 @@ public sealed class Reserva : Entity
             Asientos = asientos,
             MontoAporte = asientos * viaje.AportePorAsiento,
             Folio = GenerarFolio(ahora),
-            Estado = EstadoReserva.Pendiente
+            // HU-07: si hay cupo, la reserva queda confirmada de inmediato (sin aprobación del conductor).
+            Estado = EstadoReserva.Confirmada,
+            RespondidaEn = ahora
         };
     }
 
