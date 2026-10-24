@@ -1,5 +1,6 @@
 # Demostración reproducible del versionamiento de la base de datos con EF Core Migrations.
-# Se ejecuta a mano (Actions › "Migraciones de BD (demostración)" › Run workflow) contra un
+# Se ejecuta a mano (Actions › "Migraciones de BD (demostración)" › Run workflow) o en los PR que
+# cambian migraciones, contra un
 # PostgreSQL 15 desechable creado solo para esta ejecución: nunca toca la base de producción.
 # Muestra: migraciones pendientes, aplicación, historial, reversión controlada, reaplicación
 # y ejecución de todas las migraciones desde una base limpia.
@@ -7,6 +8,11 @@ name: Migraciones de BD (demostración)
 
 on:
   workflow_dispatch:
+  # También corre en los PR que cambian migraciones, para comprobar que se aplican y revierten.
+  pull_request:
+    paths:
+      - 'src/KARider.Infrastructure/Persistence/Migrations/**'
+      - '.github/workflows/migraciones-bd.yml'
 
 permissions:
   contents: read
