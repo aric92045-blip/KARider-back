@@ -157,6 +157,37 @@ public sealed class ViajeYReservaTests
     }
 
     [Fact]
+    public void Editar_viaje_incrementa_numero_de_ediciones_solo_si_tiene_exito()
+    {
+        var viaje = CrearViaje(Guid.NewGuid(), asientos: 3);
+        Assert.Equal(0, viaje.NumeroEdiciones);
+
+        Assert.True(viaje.Actualizar(1, Ahora.AddHours(3), cuposLibres: 2, capacidadVehiculo: 4, Ahora).IsSuccess);
+        Assert.True(viaje.Actualizar(1, Ahora.AddHours(4), cuposLibres: 3, capacidadVehiculo: 4, Ahora).IsSuccess);
+        Assert.True(viaje.Actualizar(1, Ahora.AddMinutes(-5), cuposLibres: 3, capacidadVehiculo: 4, Ahora).IsFailure);
+
+        Assert.Equal(2, viaje.NumeroEdiciones);
+    }
+
+    [Fact]
+    public void Historial_de_edicion_conserva_valores_anteriores_y_nuevos()
+    {
+        var viaje = CrearViaje(Guid.NewGuid(), asientos: 3);
+        var salidaAnterior = viaje.FechaSalida;
+
+        viaje.Actualizar(2, Ahora.AddHours(5), cuposLibres: 2, capacidadVehiculo: 4, Ahora);
+        var historial = HistorialEdicionViaje.Registrar(viaje.Id, salidaAnterior, 1, 3, viaje, "  Cambio de horario  ");
+
+        Assert.Equal(salidaAnterior, historial.FechaSalidaAnterior);
+        Assert.Equal(Ahora.AddHours(5), historial.FechaSalidaNueva);
+        Assert.Equal(1, historial.PuntoEncuentroAnteriorId);
+        Assert.Equal(2, historial.PuntoEncuentroNuevoId);
+        Assert.Equal(3, historial.CuposLibresAnteriores);
+        Assert.Equal(2, historial.CuposLibresNuevos);
+        Assert.Equal("Cambio de horario", historial.MensajeAviso);
+    }
+
+    [Fact]
     public void Ubicacion_solo_se_comparte_en_viajes_activos()
     {
         var viaje = CrearViaje(Guid.NewGuid());

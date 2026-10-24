@@ -56,6 +56,9 @@ public sealed class Viaje : Entity
 
     public DateTimeOffset? UbicacionActualizadaEn { get; private set; }
 
+    /// <summary>Veces que el conductor ha editado el viaje después de crearlo (HU-09).</summary>
+    public int NumeroEdiciones { get; private set; }
+
     public IReadOnlyCollection<ParadaViaje> Paradas => _paradas;
 
     public IReadOnlyCollection<Reserva> Reservas => _reservas;
@@ -173,6 +176,7 @@ public sealed class Viaje : Entity
         FechaSalida = fechaSalida.ToUniversalTime();
         AsientosOfrecidos = reservados + cuposLibres;
         AsientosDisponibles = cuposLibres;
+        NumeroEdiciones++;
         return Result.Success();
     }
 
