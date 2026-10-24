@@ -873,6 +873,9 @@ namespace KARider.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_viajes");
 
+                    b.HasIndex("Destino")
+                        .HasDatabaseName("ix_viajes_destino");
+
                     b.HasIndex("PuntoEncuentroId")
                         .HasDatabaseName("ix_viajes_punto_encuentro_id");
 
