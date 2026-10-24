@@ -212,11 +212,18 @@ public sealed class ViajeService(
             return DomainErrors.Viaje.PuntoEncuentroInvalido;
         }
 
+        var fechaSalidaAnterior = viaje.FechaSalida;
+        var puntoEncuentroAnteriorId = viaje.PuntoEncuentroId;
+        var cuposLibresAnteriores = viaje.AsientosDisponibles;
+
         var resultado = viaje.Actualizar(request.PuntoEncuentroId, request.FechaSalida, request.CuposLibres, viaje.Vehiculo!.Capacidad, time.GetUtcNow());
         if (resultado.IsFailure)
         {
             return resultado.Error;
         }
+
+        db.HistorialEdicionesViaje.Add(HistorialEdicionViaje.Registrar(
+            viaje.Id, fechaSalidaAnterior, puntoEncuentroAnteriorId, cuposLibresAnteriores, viaje, request.MensajeAviso));
 
         var mensaje = string.IsNullOrWhiteSpace(request.MensajeAviso)
             ? $"El conductor actualizó el viaje a {viaje.Destino}: salida {FormatearHora(viaje.FechaSalida)}. Revisa el punto de encuentro."
