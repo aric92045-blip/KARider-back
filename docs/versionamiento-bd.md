@@ -120,6 +120,11 @@ O con Docker, borrando también el volumen: `docker compose down -v && docker co
 
 ## 8. Integración con el pipeline
 
+- **Demostración** (`migraciones-bd.yml`, ejecución manual desde *Actions › Migraciones de BD (demostración) › Run workflow*):
+  crea un PostgreSQL 15 desechable y ejecuta, paso por paso, `migrations list`, `database update`, el rollback a
+  `Sprint3_NumeroEdicionesViaje`, la reaplicación y la ejecución completa desde una base limpia. El registro de
+  cada paso queda en la ejecución del workflow como evidencia.
+
 - **CI** (`ci.yml`): `dotnet ef migrations has-pending-model-changes` falla si alguien cambia el modelo sin crear la migración.
 - **Deploy** (`deploy-azure.yml`): genera un *bundle* (`dotnet ef migrations bundle`) y, si la variable
   `MIGRAR_EN_CI=true`, lo ejecuta contra la base con el secret `DATABASE_CONNECTION_STRING`.
