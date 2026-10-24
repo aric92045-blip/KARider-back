@@ -60,7 +60,7 @@ public sealed class ViajeYReservaTests
     }
 
     [Fact]
-    public void Reserva_aparta_asientos_y_rechazo_los_libera()
+    public void Reserva_aparta_asientos_y_cancelacion_los_libera()
     {
         var viaje = CrearViaje(Guid.NewGuid());
         var reserva = Reserva.Crear(viaje, Guid.NewGuid(), 2, Ahora).Value;
@@ -69,9 +69,30 @@ public sealed class ViajeYReservaTests
         Assert.Equal(80m, reserva.MontoAporte);
         Assert.StartsWith("KAR-UTTT-2026-", reserva.Folio, StringComparison.Ordinal);
 
-        Assert.True(reserva.Rechazar(viaje, Ahora).IsSuccess);
+        Assert.True(reserva.Cancelar(viaje, Ahora).IsSuccess);
         Assert.Equal(3, viaje.AsientosDisponibles);
-        Assert.Equal(EstadoReserva.Rechazada, reserva.Estado);
+        Assert.Equal(EstadoReserva.Cancelada, reserva.Estado);
+    }
+
+    [Fact]
+    public void Reserva_se_confirma_automaticamente_al_crearse()
+    {
+        var viaje = CrearViaje(Guid.NewGuid());
+        var reserva = Reserva.Crear(viaje, Guid.NewGuid(), 1, Ahora).Value;
+
+        Assert.Equal(EstadoReserva.Confirmada, reserva.Estado);
+        Assert.True(reserva.EstaActiva);
+        Assert.Equal(Ahora, reserva.RespondidaEn);
+    }
+
+    [Fact]
+    public void Reserva_ya_confirmada_no_se_puede_rechazar()
+    {
+        var viaje = CrearViaje(Guid.NewGuid());
+        var reserva = Reserva.Crear(viaje, Guid.NewGuid(), 1, Ahora).Value;
+
+        Assert.Equal("RESERVA_ESTADO_INVALIDO", reserva.Rechazar(viaje, Ahora).Error.Code);
+        Assert.Equal(2, viaje.AsientosDisponibles);
     }
 
     [Fact]

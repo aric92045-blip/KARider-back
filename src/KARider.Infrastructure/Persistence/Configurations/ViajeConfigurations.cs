@@ -36,6 +36,8 @@ internal sealed class ViajeConfiguration : IEntityTypeConfiguration<Viaje>
         // Búsqueda principal: viajes programados ordenados por salida.
         builder.HasIndex(v => new { v.Estado, v.FechaSalida });
         builder.HasIndex(v => new { v.ConductorId, v.FechaSalida });
+        // HU-06: filtro por destino (el índice por punto_encuentro_id ya lo crea la llave foránea).
+        builder.HasIndex(v => v.Destino);
     }
 }
 
